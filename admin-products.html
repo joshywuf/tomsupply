@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Admin Products</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html"><div class="brand-badge">S</div>Smart Tom</a>
+        <nav class="nav"><a href="admin.html">Admin home</a><a href="admin-products.html">Products</a><a href="admin-orders.html">Orders</a><button class="btn secondary" data-auth-toggle type="button">Logout</button></nav>
+      </header>
+      <main class="section">
+        <div class="section-head"><div><h1>Products</h1><p>Add and remove products students can request.</p></div></div>
+        <div id="accessMessage" class="status error"></div>
+        <section id="productContent" class="hidden-admin">
+          <div class="card panel">
+            <h2>Add product</h2>
+            <form id="productForm" class="form-grid">
+              <div class="inline-grid"><label>Product name<input name="name" required placeholder="Example: A4 black-and-white print" /></label><label>Category<input name="category" required placeholder="Example: Printing" /></label></div>
+              <div class="inline-grid"><label>Price in pesos<input name="price" type="number" min="0" step="0.01" required /></label><label>Available quantity<input name="stock" type="number" min="0" required /></label></div>
+              <label>Image URL<input name="image" type="url" placeholder="Optional image URL" /></label>
+              <button class="btn" type="submit">Add product</button>
+            </form>
+            <div id="productMessage" class="status"></div>
+          </div>
+          <div class="card admin-panel"><h2>Available products</h2><div id="productList" class="admin-actions"></div></div>
+        </section>
+      </main>
+    </div>
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+      const fallbackImage = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80';
+      const getProducts = () => { try { return JSON.parse(localStorage.getItem('smartTomProducts')) || []; } catch { return []; } };
+      const formatPeso = (value) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value || 0));
+      const showMessage = (type, text) => { const item = document.getElementById('productMessage'); item.className = `status show ${type}`; item.textContent = text; };
+      const render = () => {
+        const products = getProducts();
+        document.getElementById('productList').innerHTML = products.length ? products.map((product) => `<article class="verification-card"><img class="verification-photo" src="${product.image || fallbackImage}" alt="${product.name}"><div><strong>${product.name}</strong><small>${product.category} • ${formatPeso(product.price)} • ${product.stock} available</small></div><button class="btn ghost remove-product" data-id="${product.id}" type="button">Remove</button></article>`).join('') : '<p class="muted">No products yet.</p>';
+        document.querySelectorAll('.remove-product').forEach((button) => button.onclick = () => { localStorage.setItem('smartTomProducts', JSON.stringify(products.filter((item) => item.id !== button.dataset.id))); render(); });
+      };
+      const load = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) { window.location.href = 'login.html'; return; }
+        const { data: admin, error } = await supabase.rpc('is_admin');
+        if (error || !admin) { document.getElementById('accessMessage').className = 'status error show'; document.getElementById('accessMessage').textContent = 'This account is not an admin.'; return; }
+        document.getElementById('productContent').classList.remove('hidden-admin'); render();
+      };
+      document.getElementById('productForm').onsubmit = (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const products = getProducts(); products.unshift({ id: crypto.randomUUID(), name: form.get('name').toString(), category: form.get('category').toString(), price: Number(form.get('price')), stock: Number(form.get('stock')), image: form.get('image').toString() || fallbackImage }); localStorage.setItem('smartTomProducts', JSON.stringify(products)); event.currentTarget.reset(); showMessage('success', 'Product added.'); render(); };
+      load();
+    </script>
+  </body>
+</html>

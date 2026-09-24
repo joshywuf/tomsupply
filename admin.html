@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+        <nav class="nav">
+          <a href="admin.html">Admin home</a>
+          <a href="admin-products.html">Products</a>
+          <a href="admin-orders.html">Orders</a>
+          <button class="btn secondary" data-auth-toggle type="button">Logout</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div id="adminLocked" class="card lock-box">
+          <h1>Admin access required</h1>
+          <p id="adminAccessMessage" class="muted">Sign in with an approved admin account to continue.</p>
+          <div id="adminError" class="status"></div>
+          <div style="margin-top:16px;">
+            <button class="btn" onclick="window.location.href='login.html'">Go to login</button>
+            <button class="btn secondary" onclick="window.location.href='index.html'">Back to home</button>
+          </div>
+        </div>
+
+        <div id="adminContent" class="hidden-admin">
+          <div id="verificationSection" class="card panel admin-section">
+            <h3>Student verification</h3>
+            <p class="muted">Review pending verifications or inspect rejected profiles.</p>
+            <div class="admin-tabs" style="margin-top:12px;">
+              <button class="btn sub-tab active" data-sub="pending" type="button">Pending review</button>
+              <button class="btn secondary sub-tab" data-sub="rejected" type="button">Rejected profiles</button>
+              <button class="btn secondary sub-tab" data-sub="approved" type="button">Approved profiles</button>
+            </div>
+            <div id="verificationQueue" class="admin-actions"></div>
+            <div id="verificationDetail" class="verification-detail hidden-admin"></div>
+          </div>
+
+          <div id="productsSection" class="card panel admin-section">
+            <h3>Add a product students can request</h3>
+            <form id="productForm" class="form-grid">
+              <div class="inline-grid">
+                <label>Product name<input name="name" required placeholder="Example: A4 black-and-white print" /></label>
+                <label>Category<input name="category" required placeholder="Example: Printing or Supplies" /></label>
+              </div>
+              <div class="inline-grid">
+                <label>Price in pesos<input name="price" type="number" min="0" step="0.01" required /></label>
+                <label>Available quantity<input name="stock" type="number" min="0" step="1" required /></label>
+              </div>
+              <label>Image URL<input name="image" type="url" placeholder="Optional product image URL" /></label>
+              <button type="submit" class="btn">Add product</button>
+            </form>
+            <div id="productMessage" class="status"></div>
+          </div>
+
+          <div class="card admin-panel">
+            <h3>Available products</h3>
+            <p class="muted">These are the products students can see and request from the Orders page.</p>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminProducts"></tbody>
+            </table>
+          </div>
+
+          <div id="ordersSection" class="section admin-section" style="padding-bottom: 0;">
+            <div class="card admin-panel">
+              <h3>Order history</h3>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Student / contact</th>
+                    <th>Date</th>
+                    <th>Pickup date / location</th>
+                    <th>Student ID</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Payment / notes</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="adminOrders"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+
+      const formatPeso = (value) => new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2
+      }).format(Number(value || 0));
+
+      const showAdminError = (message) => {
+        const err = document.getElementById('adminError');
+        err.className = 'status show error';
+        err.textContent = message;
+      };
+
+      const revealAdmin = () => {
+        document.getElementById('adminLocked').classList.add('hidden-admin');
+        document.getElementById('adminContent').classList.remove('hidden-admin');
+      };
+
+      const getProducts = () => {
+        try {
+          return JSON.parse(localStorage.getItem('smartTomProducts')) || [];
+        } catch {
+          return [];
+        }
+      };
+
+      const getOrders = () => {
+        try {
+          return JSON.parse(localStorage.getItem('smartTomOrders')) || [];
+        } catch {
+          return [];
+        }
+      };
+
+      const getProfiles = () => {
+        try {
+          return JSON.parse(localStorage.getItem('smartTomProfiles')) || [];
+        } catch {
+          return [];
+        }
+      };
+
+      const syncProfilesFromSupabase = async () => {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (error || !data) return;
+        const localProfiles = getProfiles();
+        const mergedProfiles = data.map((profile) => {
+          const local = localProfiles.find((item) => item.id === profile.user_id) || {};
+          return {
+            ...local,
+            id: profile.user_id,
+            email: profile.email || local.email || '',
+            fullName: profile.full_name || local.fullName || '',
+            schoolName: profile.school_name || local.schoolName || '',
+            studentId: profile.school_id_number || local.studentId || '',
+            verificationStatus: profile.verification_status || local.verificationStatus || 'pending',
+            verificationSubmittedAt: profile.verification_submitted_at || local.verificationSubmittedAt || '',
+            verificationRejectionReason: profile.verification_rejection_reason || local.verificationRejectionReason || '',
+            idPhotoUrl: profile.id_photo_url || local.idPhotoUrl || '',
+            idPhotoDataUrl: local.idPhotoDataUrl || ''
+          };
+        });
+        localStorage.setItem('smartTomProfiles', JSON.stringify(mergedProfiles));
+      };
+
+      const showProductMessage = (type, text) => {
+        const message = document.getElementById('productMessage');
+        message.className = `status show ${type}`;
+        message.textContent = text;
+      };
+
+      const showVerificationDetail = (profile) => {
+        const detail = document.getElementById('verificationDetail');
+        detail.classList.remove('hidden-admin');
+        detail.innerHTML = `
+          <div class="verification-detail-head">
+            <div>
+              <span class="muted">Student verification review</span>
+              <h3>${profile.fullName || 'Student'}</h3>
+              <p>${profile.email || 'No email'} • ${profile.phone || 'No phone'}</p>
+            </div>
+            <span class="pill ${profile.verificationStatus || 'pending'}">${profile.verificationStatus || 'pending'}</span>
+          </div>
+          <div class="verification-detail-grid">
+            <div>
+              <strong>School</strong><p>${profile.schoolName || 'Not provided'}</p>
+              <strong>Student ID number</strong><p>${profile.studentId || 'Not provided'}</p>
+              <strong>Submitted</strong><p>${profile.verificationSubmittedAt ? new Date(profile.verificationSubmittedAt).toLocaleString() : 'Not submitted'}</p>
+              ${profile.verificationRejectionReason ? `<strong>Rejection reason</strong><p>${profile.verificationRejectionReason}</p>` : ''}
+            </div>
+            <div class="verification-image-large">
+              ${profile.idPhotoDataUrl ? `<img src="${profile.idPhotoDataUrl}" alt="${profile.fullName || 'Student'} school ID" />` : '<p class="muted">No ID image is available.</p>'}
+            </div>
+          </div>
+          <div class="verification-detail-actions">
+            <button class="btn approve-profile" data-id="${profile.id}" type="button">Approve verification</button>
+            <button class="btn ghost reject-profile" data-id="${profile.id}" type="button">Reject verification</button>
+          </div>
+        `;
+
+        detail.querySelectorAll('.approve-profile, .reject-profile').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const profiles = getProfiles();
+            const selected = profiles.find((item) => item.id === button.dataset.id);
+            if (!selected) return;
+            selected.verificationStatus = button.classList.contains('approve-profile') ? 'approved' : 'rejected';
+            selected.verificationRejectionReason = selected.verificationStatus === 'rejected'
+              ? 'Profile or ID information needs correction.'
+              : '';
+            await supabase.from('profiles').update({
+              verification_status: selected.verificationStatus,
+              verification_rejection_reason: selected.verificationRejectionReason || null
+            }).eq('user_id', selected.id);
+            localStorage.setItem('smartTomProfiles', JSON.stringify(profiles));
+            const nextTab = selected.verificationStatus === 'rejected' ? 'rejected' : 'approved';
+            document.querySelectorAll('.sub-tab').forEach((tab) => {
+              const isNext = tab.dataset.sub === nextTab;
+              tab.classList.toggle('active', isNext);
+              tab.classList.toggle('secondary', !isNext);
+            });
+            document.getElementById('verificationDetail').classList.add('hidden-admin');
+            renderAdmin();
+          });
+        });
+      };
+
+      const renderAdmin = () => {
+        const profiles = getProfiles();
+        const verificationQueue = document.getElementById('verificationQueue');
+        const activeSub = document.querySelector('.sub-tab.active')?.dataset.sub || 'pending';
+        const filteredProfiles = profiles.filter((profile) => (profile.verificationStatus || 'pending') === activeSub);
+
+        verificationQueue.innerHTML = filteredProfiles.length ? filteredProfiles.map((profile) => `
+          <article class="verification-card">
+            <div>
+              <strong>${profile.fullName || 'Student'}</strong>
+              <small>${profile.email || 'No email'} • ID: ${profile.studentId || 'Not provided'}</small>
+              <small>${profile.schoolName || 'School not provided'} • ${profile.phone || 'No phone'}</small>
+              ${profile.idPhotoDataUrl ? `<img class="verification-photo" src="${profile.idPhotoDataUrl}" alt="Student ID photo" />` : '<small>No ID image saved in this browser</small>'}
+            </div>
+            <div class="verification-actions">
+              <span class="pill ${profile.verificationStatus || 'pending'}">${profile.verificationStatus || 'pending'}</span>
+              <button class="btn review-profile" data-id="${profile.id}" type="button">Review details</button>
+            </div>
+          </article>
+        `).join('') : `<p class="muted">No ${activeSub} student profiles.</p>`;
+
+        document.querySelectorAll('.sub-tab').forEach((tab) => {
+          tab.onclick = () => {
+            document.querySelectorAll('.sub-tab').forEach((t) => { t.classList.remove('active'); t.classList.add('secondary'); });
+            tab.classList.remove('secondary');
+            tab.classList.add('active');
+            renderAdmin();
+          };
+        });
+
+        document.querySelectorAll('.review-profile').forEach((button) => {
+          button.addEventListener('click', () => {
+            const profile = getProfiles().find((item) => item.id === button.dataset.id);
+            if (!profile) return;
+            showVerificationDetail(profile);
+          });
+        });
+
+        const tbody = document.getElementById('adminProducts');
+        const products = getProducts();
+
+        tbody.innerHTML = products.length ? products.map((product) => `
+          <tr>
+            <td>${product.name}</td>
+            <td>${product.category}</td>
+            <td>${formatPeso(product.price)}</td>
+            <td>${product.stock}</td>
+            <td><button class="btn ghost remove-product" data-id="${product.id}" type="button">Remove</button></td>
+          </tr>
+        `).join('') : '<tr><td colspan="5">No products available.</td></tr>';
+
+        const orderTbody = document.getElementById('adminOrders');
+        const orders = getOrders();
+
+        orderTbody.innerHTML = orders.length ? orders.map((order) => `
+          <tr>
+            <td>${order.id.slice(0, 8)}</td>
+            <td>${order.studentName || 'Student name not provided'}<br><small>${order.contact || 'Contact not provided'}</small></td>
+            <td>${new Date(order.createdAt).toLocaleString()}</td>
+            <td>${order.pickupDate || 'Not specified'}<br><small>${order.pickupLocation || 'Location not specified'}</small></td>
+            <td>${order.studentId || 'Not provided'}</td>
+            <td>${order.items.map((item) => `${item.name} x${item.qty}`).join(', ')}</td>
+            <td>${formatPeso(order.total)}</td>
+            <td>${order.paymentMethod || 'Not specified'}<br><small>${order.notes || 'No notes'}</small></td>
+            <td>
+              <select class="order-status" data-id="${order.id}">
+                ${['new', 'processing', 'ready', 'completed', 'cancelled'].map((status) => `<option ${order.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+              </select>
+            </td>
+          </tr>
+        `).join('') : '<tr><td colspan="9">No orders placed yet.</td></tr>';
+
+        document.querySelectorAll('.remove-product').forEach((button) => {
+          button.addEventListener('click', () => {
+            if (!confirm('Remove this product from the student catalog?')) return;
+            localStorage.setItem('smartTomProducts', JSON.stringify(products.filter((product) => product.id !== button.dataset.id)));
+            renderAdmin();
+          });
+        });
+
+        document.querySelectorAll('.order-status').forEach((select) => {
+          select.addEventListener('change', () => {
+            const orders = getOrders();
+            const order = orders.find((item) => item.id === select.dataset.id);
+            if (!order) return;
+            order.status = select.value;
+            localStorage.setItem('smartTomOrders', JSON.stringify(orders));
+            renderAdmin();
+          });
+        });
+
+      };
+
+      const loadAdmin = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const { data: adminData, error } = await supabase.rpc('is_admin');
+        if (error || !adminData) {
+          const session = sessionData.session;
+          const reason = error?.message || 'The database returned false for is_admin().';
+          document.getElementById('adminAccessMessage').textContent = `Signed in as ${session.user.email || 'unknown account'} (${session.user.id}). Admin check failed: ${reason}`;
+          return;
+        }
+
+        revealAdmin();
+        syncProfilesFromSupabase().finally(renderAdmin);
+        const requestedSection = new URLSearchParams(window.location.search).get('section');
+        if (requestedSection && document.getElementById(requestedSection)) {
+          document.getElementById(requestedSection).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+
+      loadAdmin();
+
+      document.getElementById('productForm').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const products = getProducts();
+        products.unshift({
+          id: crypto.randomUUID(),
+          name: form.get('name').toString(),
+          category: form.get('category').toString(),
+          price: Number(form.get('price')),
+          stock: Number(form.get('stock')),
+          image: form.get('image').toString() || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'
+        });
+        localStorage.setItem('smartTomProducts', JSON.stringify(products));
+        event.currentTarget.reset();
+        showProductMessage('success', 'Product added to the student catalog.');
+        renderAdmin();
+      });
+    </script>
+  </body>
+</html>

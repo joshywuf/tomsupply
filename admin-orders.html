@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Admin Orders</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html"><div class="brand-badge">S</div>Smart Tom</a>
+        <nav class="nav"><a href="admin.html">Admin home</a><a href="admin-products.html">Products</a><a href="admin-orders.html">Orders</a><button class="btn secondary" data-auth-toggle type="button">Logout</button></nav>
+      </header>
+      <main class="section">
+        <div class="section-head"><div><h1>Orders</h1><p>Review student requests and update their progress.</p></div></div>
+        <div id="accessMessage" class="status error"></div>
+        <section id="orderContent" class="hidden-admin">
+          <div class="admin-stats"><div class="summary-card"><small>Total requests</small><strong id="totalCount">0</strong></div><div class="summary-card"><small>New requests</small><strong id="newCount">0</strong></div><div class="summary-card"><small>Ready for pickup</small><strong id="readyCount">0</strong></div></div>
+          <div class="card admin-panel"><div id="orderList" class="admin-actions"></div></div>
+        </section>
+      </main>
+    </div>
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+      const getOrders = () => { try { return JSON.parse(localStorage.getItem('smartTomOrders')) || []; } catch { return []; } };
+      const formatPeso = (value) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value || 0));
+      const render = () => {
+        const orders = getOrders();
+        document.getElementById('totalCount').textContent = orders.length;
+        document.getElementById('newCount').textContent = orders.filter((order) => order.status === 'new').length;
+        document.getElementById('readyCount').textContent = orders.filter((order) => order.status === 'ready').length;
+        document.getElementById('orderList').innerHTML = orders.length ? orders.map((order) => {
+          const items = order.items ? order.items.map((item) => `${item.name} x${item.qty}`).join(', ') : `${order.item_name} x${order.quantity || 1}`;
+          return `<article class="verification-card"><div><strong>${order.studentName || order.user_id || 'Student'}</strong><small>${order.contact || 'Contact in profile'} • ${items}</small><small>${order.pickupDate ? `Pickup: ${order.pickupDate} at ${order.pickupLocation}` : 'Request saved in Supabase'} • ${formatPeso(order.total)}</small></div><select class="order-status" data-id="${order.id}" data-user-id="${order.user_id || order.studentProfileId || ''}">${['new', 'pending', 'processing', 'ready', 'completed', 'cancelled'].map((status) => `<option ${order.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></article>`;
+        }).join('') : '<p class="muted">No requests yet.</p>';
+        document.querySelectorAll('.order-status').forEach((select) => select.onchange = async () => {
+          const orders = getOrders();
+          const order = orders.find((item) => item.id === select.dataset.id);
+          if (order) {
+            order.status = select.value;
+            localStorage.setItem('smartTomOrders', JSON.stringify(orders));
+          }
+          await supabase.from('orders').update({ status: select.value }).eq('id', select.dataset.id);
+          render();
+        });
+      };
+      const load = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) { window.location.href = 'login.html'; return; }
+        const { data: admin, error } = await supabase.rpc('is_admin');
+        if (error || !admin) { document.getElementById('accessMessage').className = 'status error show'; document.getElementById('accessMessage').textContent = 'This account is not an admin.'; return; }
+        const { data: remoteOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        const localOrders = getOrders();
+        if (!localOrders.length && remoteOrders?.length) {
+          localStorage.setItem('smartTomOrders', JSON.stringify(remoteOrders));
+        }
+        document.getElementById('orderContent').classList.remove('hidden-admin');
+        render();
+      };
+      load();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Orders</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="section-head">
+          <h2>Student shop</h2>
+          <p>Browse available print and supply products.</p>
+        </div>
+        <div id="verificationNotice" class="status info show">Profile verification is required before you can place a request.</div>
+
+        <div class="shop-shell">
+          <div class="card panel">
+            <h2>Available products</h2>
+            <div class="catalog-grid" id="catalogGrid"></div>
+          </div>
+
+          <aside class="card cart-panel">
+            <h2>Your cart</h2>
+            <div id="cartItems" class="cart-items"></div>
+            <div class="cart-total">Total: <span id="cartTotal">₱0.00</span></div>
+            <button id="checkoutBtn" class="btn" style="width:100%; margin-top:18px;">Place order</button>
+          </aside>
+        </div>
+
+        <div id="checkoutPanel" class="card panel hidden-admin" style="margin-top:24px;">
+          <h2>Confirm your request</h2>
+          <p class="muted">The admin will receive this request and confirm when it is ready.</p>
+          <form id="checkoutForm" class="form-grid">
+            <label>Full name<input name="fullName" required placeholder="Your name" /></label>
+            <label>Phone or Messenger contact<input name="contact" required placeholder="How the admin can reach you" /></label>
+            <div class="inline-grid">
+              <label>Preferred pickup date<input type="date" name="pickupDate" required /></label>
+              <label>Pickup location<select name="pickupLocation" required><option value="School office">School office</option><option value="Library counter">Library counter</option><option value="Agreed meetup point">Agreed meetup point</option></select></label>
+            </div>
+            <div class="inline-grid">
+              <label>Student ID number<input name="studentId" required placeholder="Your student ID" /></label>
+              <label>Payment method<select name="paymentMethod"><option>Pay at pickup</option><option>GCash at pickup</option></select></label>
+            </div>
+            <label>Notes<textarea name="notes" placeholder="Class, print instructions, color/size, or other details"></textarea></label>
+            <div class="hero-actions">
+              <button type="submit" class="btn">Confirm request</button>
+              <button type="button" id="cancelCheckoutBtn" class="btn secondary">Keep shopping</button>
+            </div>
+          </form>
+          <div id="checkoutMessage" class="status"></div>
+        </div>
+
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+
+      const storageKeys = {
+        products: 'smartTomProducts',
+        cart: 'smartTomCart',
+        orders: 'smartTomOrders'
+      };
+
+      const formatPeso = (value) => new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2
+      }).format(Number(value || 0));
+
+      const defaultProducts = [
+        {
+          id: crypto.randomUUID(),
+          name: 'Print Bundle',
+          category: 'Printing',
+          price: 149.00,
+          stock: 15,
+          image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: crypto.randomUUID(),
+          name: 'Notebook Pack',
+          category: 'Supplies',
+          price: 195.00,
+          stock: 8,
+          image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: crypto.randomUUID(),
+          name: 'Pens & Highlighters',
+          category: 'Stationery',
+          price: 110.00,
+          stock: 20,
+          image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80'
+        }
+      ];
+
+      const readStorage = (key, fallback) => {
+        try {
+          const value = localStorage.getItem(key);
+          return value ? JSON.parse(value) : fallback;
+        } catch {
+          return fallback;
+        }
+      };
+
+      const writeStorage = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+
+      const getProducts = () => {
+        const products = readStorage(storageKeys.products, null);
+        if (products) return products;
+        setProducts(defaultProducts);
+        return defaultProducts;
+      };
+      const setProducts = (products) => writeStorage(storageKeys.products, products);
+      const getCart = () => readStorage(storageKeys.cart, []);
+      const setCart = (cart) => writeStorage(storageKeys.cart, cart);
+
+      const renderCatalog = () => {
+        const catalog = document.getElementById('catalogGrid');
+        const products = getProducts();
+
+        catalog.innerHTML = products.map((product) => `
+          <article class="product-card">
+            <div class="product-image">
+              <img src="${product.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'}" alt="${product.name}" />
+            </div>
+            <div class="product-body">
+              <div class="product-header">
+                <h3 class="product-title">${product.name}</h3>
+                <span class="price-tag">${formatPeso(product.price)}</span>
+              </div>
+
+              <div class="product-meta">
+                <span>${product.category}</span>
+                <span>${product.stock} available</span>
+              </div>
+
+              <div class="product-actions">
+                <button class="btn secondary add-cart-btn" data-id="${product.id}" ${Number(product.stock) < 1 ? 'disabled' : ''}>${Number(product.stock) < 1 ? 'Out of stock' : 'Add to cart'}</button>
+              </div>
+            </div>
+          </article>
+        `).join('');
+
+        document.querySelectorAll('.add-cart-btn').forEach((button) => {
+          button.addEventListener('click', () => {
+            const product = getProducts().find((item) => item.id === button.dataset.id);
+            if (!product) return;
+
+            const cart = getCart();
+            const existing = cart.find((item) => item.id === product.id);
+            if (existing) {
+              existing.qty += 1;
+            } else {
+              cart.push({ ...product, qty: 1 });
+            }
+
+            setCart(cart);
+            renderCart();
+          });
+        });
+      };
+
+      const renderCart = () => {
+        const cart = getCart();
+        const cartItems = document.getElementById('cartItems');
+        const total = document.getElementById('cartTotal');
+
+        if (!cart.length) {
+          cartItems.innerHTML = '<div class="cart-item"><div><strong>Your cart is empty</strong><small>Add a product to begin your order.</small></div></div>';
+          total.textContent = '₱0.00';
+          return;
+        }
+
+        cartItems.innerHTML = cart.map((item) => `
+          <div class="cart-item">
+            <div>
+              <strong>${item.name}</strong>
+              <small>${formatPeso(item.price)} each • ${item.stock} available</small>
+              <div class="quantity-controls">
+                <button class="btn ghost cart-action" data-action="decrease" data-id="${item.id}" type="button">−</button>
+                <span>${item.qty}</span>
+                <button class="btn ghost cart-action" data-action="increase" data-id="${item.id}" type="button">+</button>
+                <button class="btn ghost cart-action remove-action" data-action="remove" data-id="${item.id}" type="button">Remove</button>
+              </div>
+            </div>
+            <strong>${formatPeso(item.qty * Number(item.price))}</strong>
+          </div>
+        `).join('');
+
+        const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * item.qty), 0);
+        total.textContent = formatPeso(subtotal);
+
+        document.querySelectorAll('.cart-action').forEach((button) => {
+          button.addEventListener('click', () => {
+            const nextCart = getCart();
+            const item = nextCart.find((entry) => entry.id === button.dataset.id);
+            if (!item) return;
+            if (button.dataset.action === 'remove') {
+              setCart(nextCart.filter((entry) => entry.id !== item.id));
+            } else if (button.dataset.action === 'increase' && item.qty < Number(item.stock)) {
+              item.qty += 1;
+              setCart(nextCart);
+            } else if (button.dataset.action === 'decrease') {
+              item.qty -= 1;
+              setCart(item.qty > 0 ? nextCart : nextCart.filter((entry) => entry.id !== item.id));
+            }
+            renderCart();
+          });
+        });
+      };
+
+      document.getElementById('checkoutBtn').addEventListener('click', () => {
+        const cart = getCart();
+        if (!cart.length) {
+          alert('Add an item to your cart before placing an order.');
+          return;
+        }
+
+        const profiles = readStorage('smartTomProfiles', []);
+        const currentProfileId = localStorage.getItem('smartTomCurrentProfileId');
+        const approvedProfile = profiles.find((profile) => profile.id === currentProfileId && profile.verificationStatus === 'approved');
+        if (!approvedProfile) {
+          document.getElementById('verificationNotice').className = 'status error show';
+          document.getElementById('verificationNotice').innerHTML = 'Your profile must be approved by an admin before ordering. <a href="profile.html"><strong>Complete your profile</strong></a>.';
+          document.getElementById('verificationNotice').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        document.getElementById('checkoutPanel').classList.remove('hidden-admin');
+        document.getElementById('checkoutPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      document.getElementById('cancelCheckoutBtn').addEventListener('click', () => {
+        document.getElementById('checkoutPanel').classList.add('hidden-admin');
+      });
+
+      document.getElementById('checkoutForm').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const cart = getCart();
+        const form = new FormData(event.currentTarget);
+        const history = readStorage(storageKeys.orders, []);
+        const order = {
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          status: 'new',
+          studentName: form.get('fullName').toString(),
+          contact: form.get('contact').toString(),
+          pickupDate: form.get('pickupDate').toString(),
+          pickupLocation: form.get('pickupLocation').toString(),
+          studentId: form.get('studentId').toString(),
+          studentProfileId: localStorage.getItem('smartTomCurrentProfileId'),
+          paymentMethod: form.get('paymentMethod').toString(),
+          notes: form.get('notes').toString(),
+          items: cart,
+          total: cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0)
+        };
+
+        const saveOrder = async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            alert('Please sign in before placing a request.');
+            window.location.href = 'login.html';
+            return;
+          }
+
+          const remoteRows = cart.map((item) => ({
+            user_id: sessionData.session.user.id,
+            item_name: item.name,
+            quantity: item.qty,
+            notes: `${order.notes || 'No notes'} | Pickup: ${order.pickupDate} at ${order.pickupLocation} | Payment: ${order.paymentMethod}`,
+            status: 'pending'
+          }));
+          const { error } = await supabase.from('orders').insert(remoteRows);
+          if (error) {
+            document.getElementById('checkoutMessage').className = 'status error show';
+            document.getElementById('checkoutMessage').textContent = error.message || 'Unable to save your request.';
+            return;
+          }
+
+          history.unshift(order);
+          writeStorage(storageKeys.orders, history);
+          setCart([]);
+          renderCart();
+          event.currentTarget.reset();
+          document.getElementById('checkoutPanel').classList.add('hidden-admin');
+          alert(`Request ${order.id.slice(0, 8)} sent. The admin has been notified.`);
+        };
+
+        saveOrder();
+      });
+
+      renderCatalog();
+      renderCart();
+    </script>
+  </body>
+</html>

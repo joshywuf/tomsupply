@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Login</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="login-shell">
+          <div class="card panel">
+            <h2>Welcome back</h2>
+            <form id="loginForm">
+              <label>
+                Email
+                <input type="email" name="email" placeholder="student@school.edu" required />
+              </label>
+
+              <label>
+                Password
+                <input type="password" name="password" placeholder="Enter your password" required />
+              </label>
+
+              <button type="submit" class="btn">Login</button>
+            </form>
+            <div id="authMessage" class="status"></div>
+          </div>
+
+          <div class="card panel">
+            <h2>Create student account</h2>
+            <form id="signupForm">
+              <label>
+                Full name
+                <input type="text" name="fullName" placeholder="Enter your full name" required />
+              </label>
+
+              <label>
+                Email
+                <input type="email" name="email" placeholder="student@school.edu" required />
+              </label>
+
+              <label>
+                Password
+                <input type="password" name="password" placeholder="Create a strong password" required />
+              </label>
+
+              <button type="submit" class="btn secondary">Create account</button>
+            </form>
+            <div id="signupMessage" class="status"></div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+    <script type="module">
+      import './auth-nav.js';
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabase = createClient(url, anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+
+      const formatError = (error) => {
+        if (!error) return 'Something went wrong. Please try again.';
+        if (error.code === 'over_email_send_rate_limit' || error.message?.toLowerCase().includes('rate limit')) {
+          return 'Supabase is temporarily rate-limiting email signups. Wait a bit or disable email confirmation for testing.';
+        }
+        return error.message || 'Something went wrong. Please try again.';
+      };
+
+      const showMessage = (el, type, text) => {
+        el.className = `status show ${type}`;
+        el.textContent = text;
+      };
+
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) window.location.href = 'dashboard.html';
+      });
+
+      document.getElementById('loginForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const email = form.get('email');
+        const password = form.get('password');
+
+        try {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          showMessage(document.getElementById('authMessage'), 'success', 'Login successful!');
+          window.location.href = 'dashboard.html';
+        } catch (error) {
+          showMessage(document.getElementById('authMessage'), 'error', formatError(error));
+        }
+      });
+
+      document.getElementById('signupForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const email = form.get('email');
+        const password = form.get('password');
+        const fullName = form.get('fullName');
+
+        try {
+          const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { full_name: fullName } }
+          });
+          if (error) throw error;
+          showMessage(document.getElementById('signupMessage'), 'success', 'Account created. Check your email and log in.');
+          event.currentTarget.reset();
+        } catch (error) {
+          showMessage(document.getElementById('signupMessage'), 'error', formatError(error));
+        }
+      });
+    </script>
+  </body>
+</html>

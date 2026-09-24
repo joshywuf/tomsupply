@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Student Profile</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="profile-shell">
+          <div class="card panel">
+            <h2>Student profile</h2>
+            <form id="profileForm">
+              <label>
+                Email
+                <input type="email" name="email" data-profile-field readonly />
+              </label>
+
+              <label>
+                Full name
+                <input type="text" name="fullName" data-profile-field placeholder="Your full name" readonly />
+              </label>
+
+              <label>
+                School name
+                <input type="text" name="schoolName" data-profile-field placeholder="Enter your school" readonly />
+              </label>
+
+              <label>
+                Student ID number
+                <input type="text" name="schoolIdNumber" data-profile-field placeholder="Your student ID number" readonly />
+              </label>
+
+              <label>
+                Phone number
+                <input type="tel" name="phone" data-profile-field placeholder="(000) 000-0000" readonly />
+              </label>
+
+              <label>
+                ID photo
+                <input type="file" name="idPhoto" data-profile-field accept="image/*" disabled />
+              </label>
+
+              <div class="hero-actions">
+                <button type="button" id="editProfileBtn" class="btn secondary">Edit profile</button>
+                <button type="submit" class="btn">Save profile</button>
+                <button type="button" id="submitVerificationBtn" class="btn" disabled>Submit for verification</button>
+              </div>
+            </form>
+            <div id="profileMessage" class="status"></div>
+          </div>
+
+            <div class="card panel">
+              <h2>Change password</h2>
+              <form id="passwordForm">
+                <label>
+                  New password
+                  <input type="password" name="newPassword" minlength="8" required placeholder="At least 8 characters" />
+                </label>
+                <label>
+                  Confirm new password
+                  <input type="password" name="confirmPassword" minlength="8" required placeholder="Type it again" />
+                </label>
+                <button type="submit" class="btn secondary">Update password</button>
+              </form>
+              <div id="passwordMessage" class="status"></div>
+            </div>
+
+          <div class="card panel">
+            <h2>Verification status</h2>
+            <div class="profile-summary">
+              <div class="summary-card">
+                <small>Current status</small>
+                <strong id="verificationStatus">Pending</strong>
+              </div>
+              <div class="summary-card">
+                <small>Pickup rule</small>
+                <strong>ID required</strong>
+              </div>
+              <div class="summary-card">
+                <small>Next step</small>
+                <strong>Upload valid ID</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+
+      const showMessage = (el, type, text) => {
+        el.className = `status show ${type}`;
+        el.textContent = text;
+      };
+
+      const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const setProfileEditing = (isEditing) => {
+        document.querySelectorAll('[data-profile-field]').forEach((field) => {
+          if (field.type === 'file') field.disabled = !isEditing;
+          else field.readOnly = !isEditing;
+        });
+        document.getElementById('editProfileBtn').textContent = isEditing ? 'Editing profile' : 'Edit profile';
+      };
+
+      document.getElementById('editProfileBtn').addEventListener('click', () => {
+        setProfileEditing(true);
+      });
+
+      const loadProfile = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        if (!session) return;
+
+        const form = document.getElementById('profileForm');
+        form.email.value = session.user.email || '';
+        localStorage.setItem('smartTomCurrentProfileId', session.user.id);
+        const savedProfiles = JSON.parse(localStorage.getItem('smartTomProfiles') || '[]');
+        const savedProfile = savedProfiles.find((profile) => profile.id === session.user.id);
+        if (savedProfile) {
+          form.phone.value = savedProfile.phone || '';
+          document.getElementById('submitVerificationBtn').disabled = false;
+          if (savedProfile.verificationStatus === 'rejected') {
+            showMessage(document.getElementById('profileMessage'), 'error', `Your verification was rejected. ${savedProfile.verificationRejectionReason || 'Update your details and submit again.'}`);
+          }
+        }
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle();
+        if (profileData) {
+          form.fullName.value = profileData.full_name || '';
+          form.schoolName.value = profileData.school_name || '';
+          form.schoolIdNumber.value = profileData.school_id_number || '';
+          document.getElementById('verificationStatus').textContent = profileData.verification_status || 'Pending';
+          if (profileData.verification_status === 'rejected') {
+            showMessage(document.getElementById('profileMessage'), 'error', 'Your verification was rejected. Update your profile or ID photo, save it, and submit again.');
+          }
+        }
+      };
+
+      document.getElementById('profileForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+
+        if (!session) {
+          showMessage(document.getElementById('profileMessage'), 'error', 'Sign in first to save your profile.');
+          return;
+        }
+
+        try {
+          const form = new FormData(event.currentTarget);
+          const payload = {
+            user_id: session.user.id,
+            email: form.get('email') || session.user.email,
+            full_name: form.get('fullName') || session.user.email.split('@')[0],
+            school_name: form.get('schoolName') || '',
+            school_id_number: form.get('schoolIdNumber') || '',
+            verification_status: 'pending'
+          };
+
+          const currentEmail = session.user.email;
+          if (form.get('email') && form.get('email').toString() !== currentEmail) {
+            const { error: emailError } = await supabase.auth.updateUser({ email: form.get('email').toString() });
+            if (emailError) throw emailError;
+          }
+
+          const file = form.get('idPhoto');
+          let idPhotoDataUrl = '';
+          if (file && file.size > 0) {
+            idPhotoDataUrl = await readFileAsDataUrl(file);
+            const fileName = `${session.user.id}/school-id-${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('school_id_uploads')
+              .upload(fileName, file, { upsert: true });
+            if (uploadError) throw uploadError;
+            payload.id_photo_url = uploadData.path;
+          }
+
+          const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'user_id' });
+          if (error) throw error;
+
+          const savedProfiles = JSON.parse(localStorage.getItem('smartTomProfiles') || '[]');
+          const savedProfile = {
+            id: session.user.id,
+            email: form.get('email').toString(),
+            fullName: payload.full_name,
+            schoolName: payload.school_name,
+            studentId: payload.school_id_number,
+            phone: form.get('phone') || '',
+            idPhotoDataUrl,
+            verificationStatus: 'pending',
+            updatedAt: new Date().toISOString()
+          };
+          const existingIndex = savedProfiles.findIndex((profile) => profile.id === savedProfile.id);
+          if (existingIndex >= 0) {
+            savedProfile.verificationStatus = savedProfiles[existingIndex].verificationStatus || 'pending';
+            savedProfiles[existingIndex] = savedProfile;
+          } else {
+            savedProfiles.push(savedProfile);
+          }
+          localStorage.setItem('smartTomProfiles', JSON.stringify(savedProfiles));
+          localStorage.setItem('smartTomCurrentProfileId', session.user.id);
+          document.getElementById('verificationStatus').textContent = savedProfile.verificationStatus === 'approved' ? 'Approved' : 'Pending';
+          document.getElementById('submitVerificationBtn').disabled = false;
+          setProfileEditing(false);
+
+          showMessage(document.getElementById('profileMessage'), 'success', 'Profile saved. Your ID is ready for verification.');
+        } catch (error) {
+          showMessage(document.getElementById('profileMessage'), 'error', error.message || 'Unable to save profile.');
+        }
+      });
+
+      document.getElementById('submitVerificationBtn').addEventListener('click', async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        const form = document.getElementById('profileForm');
+        if (!session || !form.fullName.value || !form.schoolName.value || !form.schoolIdNumber.value) {
+          showMessage(document.getElementById('profileMessage'), 'error', 'Save your name, school, and student ID before submitting verification.');
+          return;
+        }
+
+        const { error } = await supabase.from('profiles').update({
+          verification_status: 'pending',
+          verification_submitted_at: new Date().toISOString(),
+          verification_rejection_reason: null
+        }).eq('user_id', session.user.id);
+        if (error) {
+          showMessage(document.getElementById('profileMessage'), 'error', error.message || 'Unable to submit verification.');
+          return;
+        }
+
+        const profiles = JSON.parse(localStorage.getItem('smartTomProfiles') || '[]');
+        const profile = profiles.find((item) => item.id === session.user.id);
+        if (profile) {
+          profile.verificationStatus = 'pending';
+          profile.verificationSubmittedAt = new Date().toISOString();
+          localStorage.setItem('smartTomProfiles', JSON.stringify(profiles));
+        }
+        document.getElementById('verificationStatus').textContent = 'Pending';
+        document.getElementById('submitVerificationBtn').disabled = true;
+        showMessage(document.getElementById('profileMessage'), 'success', 'Verification submitted. An admin will review your profile and ID.');
+      });
+
+      document.getElementById('passwordForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const newPassword = form.get('newPassword').toString();
+        const confirmPassword = form.get('confirmPassword').toString();
+        if (newPassword !== confirmPassword) {
+          showMessage(document.getElementById('passwordMessage'), 'error', 'Passwords do not match.');
+          return;
+        }
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        showMessage(document.getElementById('passwordMessage'), error ? 'error' : 'success', error?.message || 'Password updated successfully.');
+        if (!error) event.currentTarget.reset();
+      });
+
+      loadProfile();
+    </script>
+  </body>
+</html>

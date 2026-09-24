@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Student Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="section-head">
+          <div>
+            <h1 id="welcomeName">Student dashboard</h1>
+            <p>Check your verification and request progress in one place.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-shell">
+          <section class="card panel">
+            <h2>Verification</h2>
+            <div class="summary-card verification-summary">
+              <small>Profile status</small>
+              <strong id="verificationStatus">Pending</strong>
+              <span id="verificationMessage">Complete your profile so an admin can review it.</span>
+            </div>
+            <a class="btn secondary" href="profile.html">Open profile</a>
+          </section>
+
+          <section class="card panel">
+            <h2>Quick actions</h2>
+            <div class="dashboard-grid">
+              <a class="btn" href="orders.html">Browse products</a>
+              <a class="btn secondary" href="profile.html">Update profile</a>
+              <a class="btn ghost" href="index.html">Back home</a>
+            </div>
+          </section>
+        </div>
+
+        <section class="section" style="padding-bottom:0;">
+          <div class="section-head">
+            <h2>Request summary</h2>
+            <p>Your current student requests.</p>
+          </div>
+          <div class="admin-stats">
+            <div class="summary-card"><small>Open requests</small><strong id="openCount">0</strong></div>
+            <div class="summary-card"><small>Ready for pickup</small><strong id="readyCount">0</strong></div>
+            <div class="summary-card"><small>Total requests</small><strong id="totalCount">0</strong></div>
+          </div>
+          <div id="activityList" class="profile-summary"></div>
+        </section>
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+    <script type="module">
+      import { supabase } from './auth-nav.js';
+
+      const readStorage = (key, fallback) => {
+        try {
+          return JSON.parse(localStorage.getItem(key)) || fallback;
+        } catch {
+          return fallback;
+        }
+      };
+
+      const renderOrders = (orders) => {
+        const open = orders.filter((order) => !['ready', 'completed', 'cancelled'].includes(order.status)).length;
+        const ready = orders.filter((order) => order.status === 'ready').length;
+        document.getElementById('openCount').textContent = open;
+        document.getElementById('readyCount').textContent = ready;
+        document.getElementById('totalCount').textContent = orders.length;
+
+        const list = document.getElementById('activityList');
+        list.innerHTML = orders.length ? orders.slice(0, 8).map((order) => `
+          <div class="list-card">
+            <div class="schedule-item">
+              <div>
+                <strong>${order.items ? order.items.map((item) => `${item.name} x${item.qty}`).join(', ') : order.item_name}</strong>
+                <small>${order.pickupDate ? `Pickup: ${order.pickupDate} • ${order.pickupLocation}` : `${order.quantity || 1} item(s)`}</small>
+              </div>
+              <span class="pill ${order.status || 'pending'}">${order.status || 'pending'}</span>
+            </div>
+          </div>
+        `).join('') : '<div class="list-card"><strong>No requests yet</strong><small>Browse products to submit your first request.</small></div>';
+      };
+
+      const loadDashboard = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        if (!session) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const { data: isAdmin } = await supabase.rpc('is_admin');
+        if (isAdmin) {
+          window.location.href = 'admin.html';
+          return;
+        }
+
+        localStorage.setItem('smartTomCurrentProfileId', session.user.id);
+        const profiles = readStorage('smartTomProfiles', []);
+        const profile = profiles.find((item) => item.id === session.user.id);
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle();
+        const name = profile?.fullName || profileData?.full_name || session.user.email.split('@')[0];
+        const status = profile?.verificationStatus || profileData?.verification_status || 'pending';
+        document.getElementById('welcomeName').textContent = `Welcome, ${name}`;
+        document.getElementById('verificationStatus').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        document.getElementById('verificationMessage').textContent = status === 'approved'
+          ? 'Your profile is approved and you can submit requests.'
+          : status === 'rejected'
+            ? 'Your verification was rejected. Update your profile and submit again.'
+            : 'Complete your profile so an admin can review it.';
+
+        const localOrders = readStorage('smartTomOrders', []).filter((order) => !order.studentProfileId || order.studentProfileId === session.user.id);
+        const { data: remoteOrders } = await supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+        renderOrders(localOrders.length ? localOrders : (remoteOrders || []));
+      };
+
+      loadDashboard();
+    </script>
+  </body>
+</html>
