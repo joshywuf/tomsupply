@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Student Dashboard</title>
+    <script type="module" crossorigin src="/assets/dashboard-BjTnZqmO.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/auth-nav-BisOj3S9.js">
+    <link rel="stylesheet" crossorigin href="/assets/styles-CPYS1tjY.css">
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <a class="btn secondary" data-auth-toggle href="login.html">Login</a>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="section-head">
+          <div>
+            <h1 id="welcomeName">Student dashboard</h1>
+            <p>Check your verification and request progress in one place.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-shell">
+          <section class="card panel">
+            <h2>Verification</h2>
+            <div class="summary-card verification-summary">
+              <small>Profile status</small>
+              <strong id="verificationStatus">Pending</strong>
+              <span id="verificationMessage">Complete your profile so an admin can review it.</span>
+            </div>
+            <a class="btn secondary" href="profile.html">Open profile</a>
+          </section>
+
+          <section class="card panel">
+            <h2>Quick actions</h2>
+            <div class="dashboard-grid">
+              <a class="btn" href="orders.html">Browse products</a>
+              <a class="btn secondary" href="profile.html">Update profile</a>
+              <a class="btn ghost" href="index.html">Back home</a>
+            </div>
+          </section>
+        </div>
+
+        <section class="section" style="padding-bottom:0;">
+          <div class="section-head">
+            <h2>Request summary</h2>
+            <p>Your current student requests.</p>
+          </div>
+          <div class="admin-stats">
+            <div class="summary-card"><small>Open requests</small><strong id="openCount">0</strong></div>
+            <div class="summary-card"><small>Ready for pickup</small><strong id="readyCount">0</strong></div>
+            <div class="summary-card"><small>Total requests</small><strong id="totalCount">0</strong></div>
+          </div>
+          <div id="activityList" class="profile-summary"></div>
+        </section>
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Admin Orders</title>
+    <script type="module" crossorigin src="/assets/adminOrders-C5wDcFf3.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/auth-nav-BisOj3S9.js">
+    <link rel="stylesheet" crossorigin href="/assets/styles-CPYS1tjY.css">
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html"><div class="brand-badge">S</div>Smart Tom</a>
+        <nav class="nav"><a href="admin.html">Admin home</a><a href="admin-products.html">Products</a><a href="admin-orders.html">Orders</a><button class="btn secondary" data-auth-toggle type="button">Logout</button></nav>
+      </header>
+      <main class="section">
+        <div class="section-head"><div><h1>Orders</h1><p>Review student requests and update their progress.</p></div></div>
+        <div id="accessMessage" class="status error"></div>
+        <section id="orderContent" class="hidden-admin">
+          <div class="admin-stats"><div class="summary-card"><small>Total requests</small><strong id="totalCount">0</strong></div><div class="summary-card"><small>New requests</small><strong id="newCount">0</strong></div><div class="summary-card"><small>Ready for pickup</small><strong id="readyCount">0</strong></div></div>
+          <div class="card admin-panel"><div id="orderList" class="admin-actions"></div></div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

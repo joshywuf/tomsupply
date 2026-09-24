@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Admin</title>
+    <script type="module" crossorigin src="/assets/admin-h25-ftUx.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/auth-nav-BisOj3S9.js">
+    <link rel="stylesheet" crossorigin href="/assets/styles-CPYS1tjY.css">
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+        <nav class="nav">
+          <a href="admin.html">Admin home</a>
+          <a href="admin-products.html">Products</a>
+          <a href="admin-orders.html">Orders</a>
+          <button class="btn secondary" data-auth-toggle type="button">Logout</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div id="adminLocked" class="card lock-box">
+          <h1>Admin access required</h1>
+          <p id="adminAccessMessage" class="muted">Sign in with an approved admin account to continue.</p>
+          <div id="adminError" class="status"></div>
+          <div style="margin-top:16px;">
+            <button class="btn" onclick="window.location.href='login.html'">Go to login</button>
+            <button class="btn secondary" onclick="window.location.href='index.html'">Back to home</button>
+          </div>
+        </div>
+
+        <div id="adminContent" class="hidden-admin">
+          <div id="verificationSection" class="card panel admin-section">
+            <h3>Student verification</h3>
+            <p class="muted">Review pending verifications or inspect rejected profiles.</p>
+            <div class="admin-tabs" style="margin-top:12px;">
+              <button class="btn sub-tab active" data-sub="pending" type="button">Pending review</button>
+              <button class="btn secondary sub-tab" data-sub="rejected" type="button">Rejected profiles</button>
+              <button class="btn secondary sub-tab" data-sub="approved" type="button">Approved profiles</button>
+            </div>
+            <div id="verificationQueue" class="admin-actions"></div>
+            <div id="verificationDetail" class="verification-detail hidden-admin"></div>
+          </div>
+
+          <div id="productsSection" class="card panel admin-section">
+            <h3>Add a product students can request</h3>
+            <form id="productForm" class="form-grid">
+              <div class="inline-grid">
+                <label>Product name<input name="name" required placeholder="Example: A4 black-and-white print" /></label>
+                <label>Category<input name="category" required placeholder="Example: Printing or Supplies" /></label>
+              </div>
+              <div class="inline-grid">
+                <label>Price in pesos<input name="price" type="number" min="0" step="0.01" required /></label>
+                <label>Available quantity<input name="stock" type="number" min="0" step="1" required /></label>
+              </div>
+              <label>Image URL<input name="image" type="url" placeholder="Optional product image URL" /></label>
+              <button type="submit" class="btn">Add product</button>
+            </form>
+            <div id="productMessage" class="status"></div>
+          </div>
+
+          <div class="card admin-panel">
+            <h3>Available products</h3>
+            <p class="muted">These are the products students can see and request from the Orders page.</p>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminProducts"></tbody>
+            </table>
+          </div>
+
+          <div id="ordersSection" class="section admin-section" style="padding-bottom: 0;">
+            <div class="card admin-panel">
+              <h3>Order history</h3>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Student / contact</th>
+                    <th>Date</th>
+                    <th>Pickup date / location</th>
+                    <th>Student ID</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Payment / notes</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="adminOrders"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+  </body>
+</html>

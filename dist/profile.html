@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Student Profile</title>
+    <script type="module" crossorigin src="/assets/profile-CEfVGczd.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/auth-nav-BisOj3S9.js">
+    <link rel="stylesheet" crossorigin href="/assets/styles-CPYS1tjY.css">
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="profile-shell">
+          <div class="card panel">
+            <h2>Student profile</h2>
+            <form id="profileForm">
+              <label>
+                Email
+                <input type="email" name="email" data-profile-field readonly />
+              </label>
+
+              <label>
+                Full name
+                <input type="text" name="fullName" data-profile-field placeholder="Your full name" readonly />
+              </label>
+
+              <label>
+                School name
+                <input type="text" name="schoolName" data-profile-field placeholder="Enter your school" readonly />
+              </label>
+
+              <label>
+                Student ID number
+                <input type="text" name="schoolIdNumber" data-profile-field placeholder="Your student ID number" readonly />
+              </label>
+
+              <label>
+                Phone number
+                <input type="tel" name="phone" data-profile-field placeholder="(000) 000-0000" readonly />
+              </label>
+
+              <label>
+                ID photo
+                <input type="file" name="idPhoto" data-profile-field accept="image/*" disabled />
+              </label>
+
+              <div class="hero-actions">
+                <button type="button" id="editProfileBtn" class="btn secondary">Edit profile</button>
+                <button type="submit" class="btn">Save profile</button>
+                <button type="button" id="submitVerificationBtn" class="btn" disabled>Submit for verification</button>
+              </div>
+            </form>
+            <div id="profileMessage" class="status"></div>
+          </div>
+
+            <div class="card panel">
+              <h2>Change password</h2>
+              <form id="passwordForm">
+                <label>
+                  New password
+                  <input type="password" name="newPassword" minlength="8" required placeholder="At least 8 characters" />
+                </label>
+                <label>
+                  Confirm new password
+                  <input type="password" name="confirmPassword" minlength="8" required placeholder="Type it again" />
+                </label>
+                <button type="submit" class="btn secondary">Update password</button>
+              </form>
+              <div id="passwordMessage" class="status"></div>
+            </div>
+
+          <div class="card panel">
+            <h2>Verification status</h2>
+            <div class="profile-summary">
+              <div class="summary-card">
+                <small>Current status</small>
+                <strong id="verificationStatus">Pending</strong>
+              </div>
+              <div class="summary-card">
+                <small>Pickup rule</small>
+                <strong>ID required</strong>
+              </div>
+              <div class="summary-card">
+                <small>Next step</small>
+                <strong>Upload valid ID</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+  </body>
+</html>

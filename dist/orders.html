@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tom | Orders</title>
+    <script type="module" crossorigin src="/assets/orders-kBT73Iq3.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/auth-nav-BisOj3S9.js">
+    <link rel="stylesheet" crossorigin href="/assets/styles-CPYS1tjY.css">
+  </head>
+  <body>
+    <div class="container">
+      <header class="topbar">
+        <a class="brand" href="index.html" aria-label="Go to Smart Tom home">
+          <div class="brand-badge">S</div>
+          Smart Tom
+        </a>
+
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="orders.html">Orders</a>
+          <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
+          <a class="btn secondary" data-auth-toggle href="login.html">Login</a>
+        </nav>
+      </header>
+
+      <main class="section">
+        <div class="section-head">
+          <h2>Student shop</h2>
+          <p>Browse available print and supply products.</p>
+        </div>
+        <div id="verificationNotice" class="status info show">Profile verification is required before you can place a request.</div>
+
+        <div class="shop-shell">
+          <div class="card panel">
+            <h2>Available products</h2>
+            <div class="catalog-grid" id="catalogGrid"></div>
+          </div>
+
+          <aside class="card cart-panel">
+            <h2>Your cart</h2>
+            <div id="cartItems" class="cart-items"></div>
+            <div class="cart-total">Total: <span id="cartTotal">₱0.00</span></div>
+            <button id="checkoutBtn" class="btn" style="width:100%; margin-top:18px;">Place order</button>
+          </aside>
+        </div>
+
+        <div id="checkoutPanel" class="card panel hidden-admin" style="margin-top:24px;">
+          <h2>Confirm your request</h2>
+          <p class="muted">The admin will receive this request and confirm when it is ready.</p>
+          <form id="checkoutForm" class="form-grid">
+            <label>Full name<input name="fullName" required placeholder="Your name" /></label>
+            <label>Phone or Messenger contact<input name="contact" required placeholder="How the admin can reach you" /></label>
+            <div class="inline-grid">
+              <label>Preferred pickup date<input type="date" name="pickupDate" required /></label>
+              <label>Pickup location<select name="pickupLocation" required><option value="School office">School office</option><option value="Library counter">Library counter</option><option value="Agreed meetup point">Agreed meetup point</option></select></label>
+            </div>
+            <div class="inline-grid">
+              <label>Student ID number<input name="studentId" required placeholder="Your student ID" /></label>
+              <label>Payment method<select name="paymentMethod"><option>Pay at pickup</option><option>GCash at pickup</option></select></label>
+            </div>
+            <label>Notes<textarea name="notes" placeholder="Class, print instructions, color/size, or other details"></textarea></label>
+            <div class="hero-actions">
+              <button type="submit" class="btn">Confirm request</button>
+              <button type="button" id="cancelCheckoutBtn" class="btn secondary">Keep shopping</button>
+            </div>
+          </form>
+          <div id="checkoutMessage" class="status"></div>
+        </div>
+
+      </main>
+
+      <footer class="footer">Smart Tom • Student service and pickup support</footer>
+    </div>
+
+  </body>
+</html>
