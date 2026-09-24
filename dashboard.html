@@ -18,7 +18,7 @@
           <a href="dashboard.html">Dashboard</a>
           <a href="orders.html">Orders</a>
           <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
-          <button class="btn secondary" data-auth-toggle type="button">Login</button>
+          <a class="btn secondary" data-auth-toggle href="login.html">Login</a>
         </nav>
       </header>
 
@@ -101,6 +101,11 @@
       };
 
       const loadDashboard = async () => {
+        if (!supabase) {
+          window.location.href = 'login.html';
+          return;
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         const session = sessionData.session;
         if (!session) {

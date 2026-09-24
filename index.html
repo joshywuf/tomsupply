@@ -452,7 +452,7 @@
           <a href="dashboard.html">Dashboard</a>
           <a href="orders.html">Orders</a>
           <a href="profile.html" data-auth-only="profile" hidden>Profile</a>
-          <button id="authToggleBtn" class="btn secondary" type="button">Login</button>
+          <a id="authToggleBtn" class="btn secondary" href="login.html">Login</a>
         </nav>
       </header>
 
@@ -776,13 +776,15 @@
       const url = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const supabase = createClient(url, anonKey, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-      });
+      const supabase = url && anonKey
+        ? createClient(url, anonKey, {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+            },
+          })
+        : null;
 
       const authToggleBtn = document.getElementById('authToggleBtn');
       const heroOrderBtn = document.getElementById('heroOrderBtn');
@@ -952,6 +954,11 @@
       };
 
       authToggleBtn.addEventListener('click', async () => {
+        if (!supabase) {
+          window.location.href = 'login.html';
+          return;
+        }
+
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           await supabase.auth.signOut();
@@ -1116,18 +1123,20 @@
         }
       });
 
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-          await updateDashboardState(session);
-          if (session) {
-            await renderOrders();
-          } else {
-            orderList.innerHTML = '<div class="card order-item"><div><strong>No orders yet</strong><small>Log in to see your requests.</small></div></div>';
+      if (supabase) {
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+            await updateDashboardState(session);
+            if (session) {
+              await renderOrders();
+            } else {
+              orderList.innerHTML = '<div class="card order-item"><div><strong>No orders yet</strong><small>Log in to see your requests.</small></div></div>';
+            }
           }
-        }
-      });
+        });
 
-      ensureSession();
+        ensureSession();
+      }
     </script>
   </body>
 </html>
